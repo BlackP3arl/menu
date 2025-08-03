@@ -263,33 +263,6 @@ Thank you for dining with us!
                       borderRadius: '12px'
                     }}
                     bodyStyle={{ padding: '16px' }}
-                    actions={[
-                      <Button
-                        type="primary"
-                        icon={<DollarOutlined />}
-                        onClick={() => handlePaymentClick(order)}
-                        style={{ background: '#13c2c2', borderColor: '#13c2c2' }}
-                        block
-                      >
-                        Process Payment
-                      </Button>,
-                      <Button
-                        type="text"
-                        icon={<PrinterOutlined />}
-                        onClick={() => generateBill(order)}
-                        block
-                      >
-                        Print Bill
-                      </Button>,
-                      <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        onClick={() => showOrderDetails(order)}
-                        block
-                      >
-                        Details
-                      </Button>
-                    ]}
                   >
                     <div style={{ marginBottom: '12px' }}>
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
@@ -325,6 +298,56 @@ Thank you for dining with us!
                         <Text>{order.special_instructions}</Text>
                       </div>
                     )}
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      marginTop: '16px', 
+                      borderTop: '1px solid #f0f0f0', 
+                      paddingTop: '12px' 
+                    }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <Button
+                          type="primary"
+                          icon={<DollarOutlined />}
+                          onClick={() => handlePaymentClick(order)}
+                          style={{ 
+                            background: '#13c2c2', 
+                            borderColor: '#13c2c2',
+                            fontWeight: '500',
+                            height: '36px'
+                          }}
+                          block
+                        >
+                          Process Payment
+                        </Button>
+                        <Button
+                          icon={<PrinterOutlined />}
+                          onClick={() => generateBill(order)}
+                          style={{
+                            borderColor: '#d9d9d9',
+                            color: '#666',
+                            fontWeight: '500',
+                            height: '32px'
+                          }}
+                          block
+                        >
+                          Print Bill
+                        </Button>
+                        <Button
+                          icon={<EyeOutlined />}
+                          onClick={() => showOrderDetails(order)}
+                          style={{
+                            borderColor: '#d9d9d9',
+                            color: '#666',
+                            fontWeight: '500',
+                            height: '32px'
+                          }}
+                          block
+                        >
+                          Details
+                        </Button>
+                      </Space>
+                    </div>
                   </Card>
                 </Col>
               ))}
@@ -359,27 +382,6 @@ Thank you for dining with us!
                       borderRadius: '12px'
                     }}
                     bodyStyle={{ padding: '16px' }}
-                    actions={[
-                      <Button
-                        type="text"
-                        icon={<PrinterOutlined />}
-                        onClick={() => generateBill(order)}
-                        block
-                      >
-                        Reprint Bill
-                      </Button>,
-                      <Button type="text" disabled block style={{ color: '#52c41a' }}>
-                        Paid ✓
-                      </Button>,
-                      <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        onClick={() => showOrderDetails(order)}
-                        block
-                      >
-                        Details
-                      </Button>
-                    ]}
                   >
                     <div style={{ marginBottom: '12px' }}>
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
@@ -402,10 +404,48 @@ Thank you for dining with us!
                       </Text>
                     </div>
 
-                    <div style={{ marginTop: '8px' }}>
-                      <Tag color={order.payment_status === PAYMENT_STATUS.PAID ? 'cyan' : 'orange'}>
-                        {order.payment_status === PAYMENT_STATUS.PAID ? 'Paid' : 'Payment Pending'}
+                    <div style={{ marginBottom: '8px' }}>
+                      <Tag color={order.payment_method === 'cash' ? 'green' : order.payment_method === 'card' ? 'blue' : 'purple'}>
+                        {order.payment_method === 'cash' ? '💵 Cash' : 
+                         order.payment_method === 'card' ? '💳 Card' : 
+                         order.payment_method === 'bank_transfer' ? '🏦 Bank Transfer' : 'Paid'}
                       </Tag>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      marginTop: '16px', 
+                      borderTop: '1px solid #f0f0f0', 
+                      paddingTop: '12px' 
+                    }}>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        <Button
+                          icon={<PrinterOutlined />}
+                          onClick={() => generateBill(order)}
+                          style={{
+                            borderColor: '#d9d9d9',
+                            color: '#666',
+                            fontWeight: '500',
+                            height: '32px'
+                          }}
+                          block
+                        >
+                          Print Bill
+                        </Button>
+                        <Button
+                          icon={<EyeOutlined />}
+                          onClick={() => showOrderDetails(order)}
+                          style={{
+                            borderColor: '#d9d9d9',
+                            color: '#666',
+                            fontWeight: '500',
+                            height: '32px'
+                          }}
+                          block
+                        >
+                          Details
+                        </Button>
+                      </Space>
                     </div>
                   </Card>
                 </Col>
