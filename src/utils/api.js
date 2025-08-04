@@ -52,6 +52,77 @@ export const tableApi = {
     
     if (error) throw error;
     return data;
+  },
+
+  async create(table) {
+    console.log('Creating table:', table);
+    
+    const { data, error } = await supabase
+      .from('tables')
+      .insert(table)
+      .select();
+    
+    if (error) {
+      console.error('Create table error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error('Failed to create table');
+    }
+    
+    console.log('Table create successful:', data[0]);
+    return data[0];
+  },
+
+  async update(id, updates) {
+    console.log('Updating table with ID:', id, 'Updates:', updates);
+    
+    // Add updated_at timestamp
+    const updatesWithTimestamp = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase
+      .from('tables')
+      .update(updatesWithTimestamp)
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Update table error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error(`Table with ID ${id} not found or could not be updated`);
+    }
+    
+    console.log('Table update successful:', data[0]);
+    return data[0];
+  },
+
+  async delete(id) {
+    console.log('Deleting table with ID:', id);
+    
+    const { data, error } = await supabase
+      .from('tables')
+      .delete()
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Delete table error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error(`Table with ID ${id} not found or could not be deleted`);
+    }
+    
+    console.log('Table delete successful:', data[0]);
+    return data[0];
   }
 };
 
@@ -95,8 +166,86 @@ export const menuApi = {
         )
       `)
       .eq('restaurant_id', restaurantId)
-      .eq('is_active', true)
       .order('display_order');
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async getFullMenuForCustomers(restaurantId) {
+    const { data, error } = await supabase
+      .from('categories')
+      .select(`
+        *,
+        menu_items!inner (
+          *,
+          item_options (*)
+        )
+      `)
+      .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
+      .eq('menu_items.is_available', true)
+      .order('display_order');
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async createItem(item) {
+    console.log('Creating item:', item);
+    
+    const { data, error } = await supabase
+      .from('menu_items')
+      .insert(item)
+      .select();
+    
+    if (error) {
+      console.error('Create item error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error('Failed to create menu item');
+    }
+    
+    return data[0];
+  },
+
+  async updateItem(id, updates) {
+    console.log('Updating item with ID:', id, 'Updates:', updates);
+    
+    // Add updated_at timestamp
+    const updatesWithTimestamp = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update(updatesWithTimestamp)
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Update item error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error(`Menu item with ID ${id} not found or could not be updated`);
+    }
+    
+    console.log('Update successful:', data[0]);
+    return data[0];
+  },
+
+  async deleteItem(id) {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
     
     if (error) throw error;
     return data;
@@ -116,29 +265,6 @@ export const menuApi = {
   async updateCategory(id, updates) {
     const { data, error } = await supabase
       .from('categories')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-
-  async createMenuItem(item) {
-    const { data, error } = await supabase
-      .from('menu_items')
-      .insert(item)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-
-  async updateMenuItem(id, updates) {
-    const { data, error } = await supabase
-      .from('menu_items')
       .update(updates)
       .eq('id', id)
       .select()
@@ -334,6 +460,29 @@ export const analyticsApi = {
       .eq('orders.payment_status', PAYMENT_STATUS.PAID)
       .gte('orders.created_at', startDate)
       .lte('orders.created_at', endDate);
+    
+    if (error) throw error;
+    return data;
+  }
+};
+
+// Category API (separate export for admin components)
+export const categoryApi = {
+  async create(category) {
+    return menuApi.createCategory(category);
+  },
+
+  async update(id, updates) {
+    return menuApi.updateCategory(id, updates);
+  },
+
+  async delete(id) {
+    const { data, error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
     
     if (error) throw error;
     return data;

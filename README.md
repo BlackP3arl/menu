@@ -22,7 +22,16 @@ A comprehensive web-based QR code ordering system for restaurants with real-time
 - ✅ Ready orders for service
 - ✅ Order delivery management
 - ✅ Bill generation and printing
-- ✅ Payment tracking
+- ✅ Payment tracking with method selection
+
+### Admin Features
+- ✅ Comprehensive dashboard with key metrics
+- ✅ Menu management (categories, items, pricing)
+- ✅ Table management with QR code generation
+- ✅ Restaurant settings configuration
+- ✅ Analytics and reporting dashboard
+- ✅ Staff user management
+- ✅ Real-time revenue and order tracking
 
 ### Technical Features
 - ✅ Real-time updates with Socket.IO
@@ -94,7 +103,16 @@ Visit: `http://localhost:5173/staff/{restaurant-id}`
 - See orders ready for delivery
 - Mark orders as served
 - Generate and print bills
-- Track payment status
+- Process payments with method selection
+
+### For Restaurant Admins
+Visit: `http://localhost:5173/admin/{restaurant-id}`
+- View comprehensive dashboard with key metrics
+- Manage menu categories and items
+- Configure restaurant settings
+- Manage tables and generate QR codes
+- View analytics and reports
+- Manage staff users and permissions
 
 ## QR Code Format
 

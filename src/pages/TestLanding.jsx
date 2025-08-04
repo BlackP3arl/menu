@@ -198,7 +198,7 @@ function TestLanding() {
                 <div>
                   <Text strong style={{ color: '#1890ff' }}>Admin Dashboard</Text>
                   <Paragraph type="secondary" style={{ fontSize: '13px', margin: '4px 0 8px 0' }}>
-                    For restaurant management (Coming in Phase 3)
+                    For restaurant owners to manage menu, tables, settings, and analytics
                   </Paragraph>
                   <Button
                     type="default"
@@ -206,9 +206,8 @@ function TestLanding() {
                     target="_blank"
                     style={{ width: '100%' }}
                     size="large"
-                    disabled
                   >
-                    Admin Dashboard (Coming Soon)
+                    Open Admin Dashboard
                   </Button>
                 </div>
               </Space>
@@ -222,7 +221,7 @@ function TestLanding() {
           style={{ marginTop: '24px' }}
         >
           <Row gutter={16}>
-            <Col xs={24} md={8}>
+            <Col xs={24} lg={6}>
               <div style={{ textAlign: 'center', padding: '16px' }}>
                 <Title level={4} style={{ color: '#f0681a' }}>1. Customer Flow</Title>
                 <Paragraph>
@@ -233,7 +232,7 @@ function TestLanding() {
                 </Paragraph>
               </div>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} lg={6}>
               <div style={{ textAlign: 'center', padding: '16px' }}>
                 <Title level={4} style={{ color: '#52c41a' }}>2. Kitchen Flow</Title>
                 <Paragraph>
@@ -244,7 +243,7 @@ function TestLanding() {
                 </Paragraph>
               </div>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} lg={6}>
               <div style={{ textAlign: 'center', padding: '16px' }}>
                 <Title level={4} style={{ color: '#722ed1' }}>3. Service Flow</Title>
                 <Paragraph>
@@ -252,6 +251,17 @@ function TestLanding() {
                   • See ready orders<br/>
                   • Mark as served<br/>
                   • Generate bills and mark paid
+                </Paragraph>
+              </div>
+            </Col>
+            <Col xs={24} lg={6}>
+              <div style={{ textAlign: 'center', padding: '16px' }}>
+                <Title level={4} style={{ color: '#1890ff' }}>4. Admin Flow</Title>
+                <Paragraph>
+                  • Open Admin Dashboard<br/>
+                  • Manage menu & tables<br/>
+                  • View analytics & reports<br/>
+                  • Configure restaurant settings
                 </Paragraph>
               </div>
             </Col>

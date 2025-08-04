@@ -80,7 +80,7 @@ function CustomerMenu() {
   // Fetch menu data
   const { data: menu, isLoading: menuLoading, error: menuError } = useQuery(
     ['menu', restaurantId],
-    () => menuApi.getFullMenu(restaurantId),
+    () => menuApi.getFullMenuForCustomers(restaurantId),
     {
       enabled: !!restaurantId,
       onSuccess: (data) => {
