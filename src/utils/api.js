@@ -286,6 +286,157 @@ export const menuApi = {
   }
 };
 
+// Item Options API
+export const itemOptionsApi = {
+  async getByMenuItem(menuItemId) {
+    console.log('Fetching options for menu item:', menuItemId);
+    const { data, error } = await supabase
+      .from('item_options')
+      .select('*')
+      .eq('menu_item_id', menuItemId)
+      .eq('is_active', true)
+      .order('option_group')
+      .order('display_order');
+    
+    if (error) {
+      console.error('Get item options error:', error);
+      throw error;
+    }
+    
+    console.log('Fetched options:', data);
+    return data;
+  },
+
+  async create(option) {
+    console.log('Creating item option:', option);
+    
+    const { data, error } = await supabase
+      .from('item_options')
+      .insert(option)
+      .select();
+    
+    if (error) {
+      console.error('Create item option error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error('Failed to create item option');
+    }
+    
+    console.log('Item option created successfully:', data[0]);
+    return data[0];
+  },
+
+  async update(id, updates) {
+    console.log('Updating item option with ID:', id, 'Updates:', updates);
+    
+    const { data, error } = await supabase
+      .from('item_options')
+      .update(updates)
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Update item option error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error(`Item option with ID ${id} not found or could not be updated`);
+    }
+    
+    console.log('Item option updated successfully:', data[0]);
+    return data[0];
+  },
+
+  async delete(id) {
+    console.log('Deleting item option with ID:', id);
+    
+    const { data, error } = await supabase
+      .from('item_options')
+      .delete()
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Delete item option error:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error(`Item option with ID ${id} not found or could not be deleted`);
+    }
+    
+    console.log('Item option deleted successfully:', data[0]);
+    return data[0];
+  },
+
+  async getByRestaurant(restaurantId) {
+    console.log('Fetching all options for restaurant:', restaurantId);
+    
+    // First, let's try a simpler query to test if basic access works
+    const { data: testData, error: testError } = await supabase
+      .from('item_options')
+      .select('*')
+      .eq('is_active', true)
+      .limit(1);
+    
+    console.log('Test query result:', { testData, testError });
+    
+    if (testError) {
+      console.error('Basic item_options access failed:', testError);
+      throw testError;
+    }
+
+    // Now try the full query with menu items
+    const { data, error } = await supabase
+      .from('item_options')
+      .select(`
+        *,
+        menu_items (
+          id,
+          name,
+          category_id
+        )
+      `)
+      .eq('is_active', true)
+      .order('menu_item_id')
+      .order('option_group')
+      .order('display_order');
+    
+    if (error) {
+      console.error('Get restaurant options error:', error);
+      throw error;
+    }
+    
+    console.log('Fetched restaurant options:', data);
+    
+    // Filter by restaurant on client side for now
+    if (!data || data.length === 0) {
+      console.log('No item options found in database');
+      return [];
+    }
+    
+    // For debugging - let's also check what menu items we have
+    const { data: menuItems, error: menuError } = await supabase
+      .from('menu_items')
+      .select(`
+        id,
+        name,
+        category_id,
+        categories (
+          restaurant_id
+        )
+      `)
+      .eq('categories.restaurant_id', restaurantId);
+    
+    console.log('Menu items for restaurant:', menuItems);
+    
+    return data;
+  }
+};
+
 // Order API
 export const orderApi = {
   async create(orderData) {

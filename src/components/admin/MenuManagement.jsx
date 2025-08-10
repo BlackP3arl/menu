@@ -25,10 +25,11 @@ import {
   DeleteOutlined,
   UploadOutlined,
   MenuOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { menuApi, categoryApi } from '../../utils/api';
+import { menuApi, categoryApi, itemOptionsApi } from '../../utils/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -38,12 +39,16 @@ function MenuManagement({ restaurantId }) {
   const [activeTab, setActiveTab] = useState('categories');
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [itemModalVisible, setItemModalVisible] = useState(false);
+  const [optionModalVisible, setOptionModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
+  const [editingOption, setEditingOption] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   
   const [categoryForm] = Form.useForm();
   const [itemForm] = Form.useForm();
+  const [optionForm] = Form.useForm();
   const queryClient = useQueryClient();
 
   // Fetch menu data
@@ -153,6 +158,63 @@ function MenuManagement({ restaurantId }) {
     }
   );
 
+  // Fetch item options for the restaurant
+  const { data: itemOptions = [], isLoading: optionsLoading, refetch: refetchOptions } = useQuery(
+    ['item-options', restaurantId],
+    () => itemOptionsApi.getByRestaurant(restaurantId),
+    { enabled: !!restaurantId }
+  );
+
+  // Option mutations
+  const createOptionMutation = useMutation(
+    (optionData) => itemOptionsApi.create(optionData),
+    {
+      onSuccess: () => {
+        message.success('Menu option created successfully');
+        setOptionModalVisible(false);
+        optionForm.resetFields();
+        refetchOptions();
+      },
+      onError: (error) => {
+        const errorMessage = error?.message || 'Failed to create menu option';
+        message.error(`Failed to create menu option: ${errorMessage}`);
+        console.error('Create option error:', error);
+      }
+    }
+  );
+
+  const updateOptionMutation = useMutation(
+    ({ id, data }) => itemOptionsApi.update(id, data),
+    {
+      onSuccess: () => {
+        message.success('Menu option updated successfully');
+        setOptionModalVisible(false);
+        setEditingOption(null);
+        optionForm.resetFields();
+        refetchOptions();
+      },
+      onError: (error) => {
+        const errorMessage = error?.message || 'Failed to update menu option';
+        message.error(`Failed to update menu option: ${errorMessage}`);
+        console.error('Update option error:', error);
+      }
+    }
+  );
+
+  const deleteOptionMutation = useMutation(
+    (id) => itemOptionsApi.delete(id),
+    {
+      onSuccess: () => {
+        message.success('Menu option deleted successfully');
+        refetchOptions();
+      },
+      onError: (error) => {
+        message.error('Failed to delete menu option');
+        console.error('Delete option error:', error);
+      }
+    }
+  );
+
   // Event handlers
   const handleCreateCategory = () => {
     setEditingCategory(null);
@@ -243,6 +305,55 @@ function MenuManagement({ restaurantId }) {
       }
     } catch (error) {
       console.error('Item submit error:', error);
+    }
+  };
+
+  // Option event handlers
+  const handleCreateOption = () => {
+    setEditingOption(null);
+    optionForm.resetFields();
+    optionForm.setFieldsValue({ menu_item_id: selectedMenuItem });
+    setOptionModalVisible(true);
+  };
+
+  const handleEditOption = (option) => {
+    console.log('Editing option:', option);
+    setEditingOption(option);
+    optionForm.setFieldsValue({
+      menu_item_id: option.menu_item_id,
+      option_group: option.option_group,
+      option_name: option.option_name,
+      price_modifier: option.price_modifier,
+      is_required: option.is_required,
+      display_order: option.display_order,
+      is_active: option.is_active
+    });
+    setOptionModalVisible(true);
+  };
+
+  const handleOptionSubmit = async (values) => {
+    try {
+      console.log('Option form values submitted:', values);
+      console.log('Editing option:', editingOption);
+      
+      // Validate menu item selection
+      if (!values.menu_item_id) {
+        message.error('Please select a menu item for the option');
+        return;
+      }
+      
+      if (editingOption) {
+        console.log('Updating option with ID:', editingOption.id);
+        await updateOptionMutation.mutateAsync({
+          id: editingOption.id,
+          data: values
+        });
+      } else {
+        console.log('Creating new option');
+        await createOptionMutation.mutateAsync(values);
+      }
+    } catch (error) {
+      console.error('Option submit error:', error);
     }
   };
 
@@ -394,6 +505,117 @@ function MenuManagement({ restaurantId }) {
     }
   ];
 
+  // Table columns for item options
+  const optionColumns = [
+    {
+      title: 'Menu Item',
+      key: 'menu_item',
+      render: (_, record) => (
+        <div>
+          <Text strong>{record.menu_items?.name}</Text>
+          <div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {menu.find(cat => cat.id === record.menu_items?.category_id)?.name}
+            </Text>
+          </div>
+        </div>
+      ),
+      sorter: (a, b) => a.menu_items?.name.localeCompare(b.menu_items?.name)
+    },
+    {
+      title: 'Option Group',
+      dataIndex: 'option_group',
+      key: 'option_group',
+      render: (group) => (
+        <Tag color={
+          group === 'size' ? 'blue' : 
+          group === 'preparation' ? 'green' : 
+          group === 'addons' ? 'orange' : 'default'
+        }>
+          {group?.charAt(0).toUpperCase() + group?.slice(1)}
+        </Tag>
+      ),
+      filters: [
+        { text: 'Size', value: 'size' },
+        { text: 'Preparation', value: 'preparation' },
+        { text: 'Add-ons', value: 'addons' }
+      ],
+      onFilter: (value, record) => record.option_group === value
+    },
+    {
+      title: 'Option Name',
+      dataIndex: 'option_name',
+      key: 'option_name',
+      render: (text) => <Text>{text}</Text>
+    },
+    {
+      title: 'Price Modifier',
+      dataIndex: 'price_modifier',
+      key: 'price_modifier',
+      render: (price) => {
+        const amount = parseFloat(price || 0);
+        return (
+          <Text style={{ color: amount > 0 ? '#52c41a' : amount < 0 ? '#ff4d4f' : '#666' }}>
+            {amount === 0 ? 'Free' : (amount > 0 ? '+' : '') + formatPrice(amount)}
+          </Text>
+        );
+      }
+    },
+    {
+      title: 'Required',
+      dataIndex: 'is_required',
+      key: 'is_required',
+      render: (required) => (
+        <Tag color={required ? 'red' : 'default'}>
+          {required ? 'Required' : 'Optional'}
+        </Tag>
+      )
+    },
+    {
+      title: 'Order',
+      dataIndex: 'display_order',
+      key: 'display_order',
+      width: 80,
+      sorter: (a, b) => a.display_order - b.display_order
+    },
+    {
+      title: 'Status',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      render: (isActive) => (
+        <Tag color={isActive ? 'green' : 'red'}>
+          {isActive ? 'Active' : 'Inactive'}
+        </Tag>
+      )
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEditOption(record)}
+          >
+            Edit
+          </Button>
+          <Popconfirm
+            title="Delete Option"
+            description="Are you sure you want to delete this menu option?"
+            onConfirm={() => deleteOptionMutation.mutate(record.id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
+      )
+    }
+  ];
+
   // Get all menu items
   const allItems = menu.reduce((items, category) => {
     return [...items, ...(category.menu_items || [])];
@@ -403,6 +625,11 @@ function MenuManagement({ restaurantId }) {
   const filteredItems = selectedCategory 
     ? allItems.filter(item => item.category_id === selectedCategory)
     : allItems;
+
+  // Filter options by selected menu item
+  const filteredOptions = selectedMenuItem 
+    ? itemOptions.filter(option => option.menu_item_id === selectedMenuItem)
+    : itemOptions;
 
   return (
     <div>
@@ -496,6 +723,61 @@ function MenuManagement({ restaurantId }) {
                 />
               </Card>
             </Col>
+              </Row>
+            )
+          },
+          {
+            key: 'options',
+            label: (
+              <span>
+                <SettingOutlined />
+                Menu Options ({itemOptions.length})
+              </span>
+            ),
+            children: (
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <Card>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <Text strong>Filter by Menu Item:</Text>
+                        <Select
+                          value={selectedMenuItem}
+                          onChange={setSelectedMenuItem}
+                          placeholder="All Menu Items"
+                          style={{ width: 250 }}
+                          allowClear
+                          showSearch
+                          optionFilterProp="children"
+                        >
+                          {allItems.map(item => (
+                            <Option key={item.id} value={item.id}>
+                              {item.name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Space>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleCreateOption}
+                      >
+                        Add Menu Option
+                      </Button>
+                    </Space>
+                  </Card>
+                </Col>
+                <Col span={24}>
+                  <Card title="Menu Item Options">
+                    <Table
+                      columns={optionColumns}
+                      dataSource={filteredOptions}
+                      rowKey="id"
+                      loading={optionsLoading}
+                      pagination={{ pageSize: 10 }}
+                    />
+                  </Card>
+                </Col>
               </Row>
             )
           }
@@ -700,6 +982,138 @@ function MenuManagement({ restaurantId }) {
                 loading={createItemMutation.isLoading || updateItemMutation.isLoading}
               >
                 {editingItem ? 'Update' : 'Create'} Menu Item
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Menu Option Modal */}
+      <Modal
+        title={editingOption ? 'Edit Menu Option' : 'Add Menu Option'}
+        open={optionModalVisible}
+        onCancel={() => {
+          setOptionModalVisible(false);
+          setEditingOption(null);
+          optionForm.resetFields();
+        }}
+        footer={null}
+        width={700}
+      >
+        <Form
+          form={optionForm}
+          layout="vertical"
+          onFinish={handleOptionSubmit}
+        >
+          <Form.Item
+            name="menu_item_id"
+            label="Menu Item"
+            rules={[{ required: true, message: 'Please select a menu item' }]}
+          >
+            <Select 
+              placeholder="Select menu item"
+              showSearch
+              optionFilterProp="children"
+            >
+              {allItems.map(item => (
+                <Option key={item.id} value={item.id}>
+                  {item.name} - {menu.find(cat => cat.id === item.category_id)?.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="option_group"
+                label="Option Group"
+                rules={[{ required: true, message: 'Please select option group' }]}
+              >
+                <Select placeholder="Select option group">
+                  <Option value="size">Size</Option>
+                  <Option value="preparation">Preparation</Option>
+                  <Option value="addons">Add-ons</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="option_name"
+                label="Option Name"
+                rules={[{ required: true, message: 'Please enter option name' }]}
+              >
+                <Input placeholder="e.g., Large, Extra Spicy, Add Cheese" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="price_modifier"
+                label="Price Modifier ($)"
+                initialValue={0}
+                rules={[{ required: true, message: 'Please enter price modifier' }]}
+              >
+                <InputNumber
+                  step={0.25}
+                  style={{ width: '100%' }}
+                  placeholder="0.00"
+                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="display_order"
+                label="Display Order"
+                initialValue={1}
+                rules={[{ required: true, message: 'Please enter display order' }]}
+              >
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="is_required"
+                label="Required"
+                initialValue={false}
+              >
+                <Select>
+                  <Option value={false}>Optional</Option>
+                  <Option value={true}>Required</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="is_active"
+                label="Status"
+                initialValue={true}
+              >
+                <Select>
+                  <Option value={true}>Active</Option>
+                  <Option value={false}>Inactive</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
+            <Space>
+              <Button onClick={() => setOptionModalVisible(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={createOptionMutation.isLoading || updateOptionMutation.isLoading}
+              >
+                {editingOption ? 'Update' : 'Create'} Option
               </Button>
             </Space>
           </Form.Item>

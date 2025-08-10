@@ -40,24 +40,48 @@ The admin dashboard features require several database schema updates. Please run
 -- Status: REQUIRED for table management to work
 ```
 
+## 5. Item Options RLS Policies ⚠️ **CRITICAL FOR MENU OPTIONS**
+**File**: `database/fix_item_options_rls.sql`
+**Purpose**: Fix Row Level Security policies for item_options CRUD operations
+```sql
+-- Creates permissive RLS policies for development
+-- Enables proper menu options insert/update/delete operations
+-- Status: REQUIRED for menu options management to work
+-- ⚠️ This is likely why you see "No data" in Menu Options tab
+```
+
+## 6. Sample Item Options Data ⚠️ **OPTIONAL BUT RECOMMENDED**
+**File**: `database/sample_item_options.sql`
+**Purpose**: Add sample menu options for testing functionality
+```sql
+-- Adds sample size, preparation, and add-on options for demo menu items
+-- Creates options for "Hot Chicken Wings" and "Grilled Salmon"
+-- Status: OPTIONAL but helps test the functionality immediately
+```
+
 ## Migration Order
 Run these migrations in this exact order:
 
 1. `add_table_fields.sql` - **CRITICAL** (fixes current table editing error)
 2. `fix_tables_rls.sql` - **REQUIRED** (enables table operations)
 3. `fix_menu_items_rls.sql` - **REQUIRED** (enables menu operations)  
-4. `add_menu_item_fields.sql` - **OPTIONAL** (adds extra menu fields)
+4. `fix_item_options_rls.sql` - **CRITICAL** ⚠️ (fixes "No data" issue in Menu Options)
+5. `sample_item_options.sql` - **RECOMMENDED** (adds test data for Menu Options)
+6. `add_menu_item_fields.sql` - **OPTIONAL** (adds extra menu fields)
 
 ## Current Status
 ✅ Admin dashboard UI is complete
 ✅ All API functions are implemented  
 ✅ Form validation is fixed
+✅ **NEW**: Menu options management UI is complete
+✅ **NEW**: Item options API functions are implemented
 ❌ Database schema is missing required columns
 ❌ RLS policies are blocking operations
 
 ## After Running Migrations
 ✅ Table management will work (add/edit/delete tables)
 ✅ Menu management will work (add/edit/delete items & categories)
+✅ **NEW**: Menu options management will work (add/edit/delete size, preparation, add-ons)
 ✅ QR code generation will work
 ✅ All admin features will be fully functional
 
