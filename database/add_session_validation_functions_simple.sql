@@ -25,13 +25,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to check restaurant ordering hours
+-- Simplified function to check restaurant ordering hours
 CREATE OR REPLACE FUNCTION is_restaurant_open(p_restaurant_id UUID) RETURNS BOOLEAN AS $$
 DECLARE
     restaurant_hours JSONB;
-    current_time TIME;
-    start_time TIME;
-    end_time TIME;
+    start_time TEXT;
+    end_time TEXT;
+    current_hour INTEGER;
+    current_minute INTEGER;
+    start_hour INTEGER;
+    start_minute INTEGER;
+    end_hour INTEGER;
+    end_minute INTEGER;
+    current_minutes INTEGER;
+    start_minutes INTEGER;
+    end_minutes INTEGER;
 BEGIN
     -- Get restaurant ordering hours
     SELECT ordering_hours INTO restaurant_hours
@@ -42,20 +50,36 @@ BEGIN
         RETURN true; -- Default to open if no hours set
     END IF;
     
-    -- Get current time
-    current_time := LOCALTIME;
+    -- Get current hour and minute
+    current_hour := EXTRACT(hour FROM NOW());
+    current_minute := EXTRACT(minute FROM NOW());
+    current_minutes := current_hour * 60 + current_minute;
     
     -- Parse start and end times
-    start_time := (restaurant_hours->>'start')::TIME;
-    end_time := (restaurant_hours->>'end')::TIME;
+    start_time := restaurant_hours->>'start';
+    end_time := restaurant_hours->>'end';
+    
+    IF start_time IS NULL OR end_time IS NULL THEN
+        RETURN true; -- Default to open if times not set
+    END IF;
+    
+    -- Parse start time (format: "HH:MM")
+    start_hour := CAST(split_part(start_time, ':', 1) AS INTEGER);
+    start_minute := CAST(split_part(start_time, ':', 2) AS INTEGER);
+    start_minutes := start_hour * 60 + start_minute;
+    
+    -- Parse end time (format: "HH:MM")
+    end_hour := CAST(split_part(end_time, ':', 1) AS INTEGER);
+    end_minute := CAST(split_part(end_time, ':', 2) AS INTEGER);
+    end_minutes := end_hour * 60 + end_minute;
     
     -- Check if current time is within ordering hours
-    IF start_time <= end_time THEN
+    IF start_minutes <= end_minutes THEN
         -- Normal case (e.g., 09:00 to 22:00)
-        RETURN current_time >= start_time AND current_time <= end_time;
+        RETURN current_minutes >= start_minutes AND current_minutes <= end_minutes;
     ELSE
         -- Crosses midnight (e.g., 22:00 to 02:00)
-        RETURN current_time >= start_time OR current_time <= end_time;
+        RETURN current_minutes >= start_minutes OR current_minutes <= end_minutes;
     END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -156,9 +180,6 @@ BEGIN
     RETURN cleanup_count;
 END;
 $$ LANGUAGE plpgsql;
-
--- Create a scheduled job to cleanup expired sessions (optional - requires pg_cron extension)
--- SELECT cron.schedule('cleanup-expired-sessions', '*/15 * * * *', 'SELECT cleanup_expired_sessions();');
 
 COMMENT ON FUNCTION is_table_session_valid_by_number IS 'Validates table session by restaurant ID and table number';
 COMMENT ON FUNCTION is_restaurant_open IS 'Checks if restaurant is currently open for ordering';
