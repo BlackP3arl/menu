@@ -52,6 +52,9 @@ function RestaurantSettings({ restaurantId, restaurant }) {
   // Set initial form values when restaurant data is loaded
   React.useEffect(() => {
     if (restaurant) {
+      // Parse ordering hours if they exist
+      const orderingHours = restaurant.ordering_hours || { start: '09:00', end: '22:00' };
+      
       form.setFieldsValue({
         name: restaurant.name,
         description: restaurant.description,
@@ -70,20 +73,36 @@ function RestaurantSettings({ restaurantId, restaurant }) {
         opening_time: restaurant.opening_time ? moment(restaurant.opening_time, 'HH:mm') : null,
         closing_time: restaurant.closing_time ? moment(restaurant.closing_time, 'HH:mm') : null,
         max_party_size: restaurant.max_party_size || 8,
-        reservation_advance_days: restaurant.reservation_advance_days || 30
+        reservation_advance_days: restaurant.reservation_advance_days || 30,
+        // Ordering management fields
+        ordering_start_time: orderingHours.start ? moment(orderingHours.start, 'HH:mm') : null,
+        ordering_end_time: orderingHours.end ? moment(orderingHours.end, 'HH:mm') : null,
+        default_session_duration: restaurant.default_session_duration || 240
       });
     }
   }, [restaurant, form]);
 
   const handleSubmit = async (values) => {
     try {
+      // Format ordering hours as JSONB
+      const orderingHours = {
+        start: values.ordering_start_time ? values.ordering_start_time.format('HH:mm') : '09:00',
+        end: values.ordering_end_time ? values.ordering_end_time.format('HH:mm') : '22:00'
+      };
+      
       const formattedValues = {
         ...values,
         tax_rate: values.tax_rate / 100, // Convert back to decimal
         service_charge_rate: values.service_charge_rate / 100,
         opening_time: values.opening_time ? values.opening_time.format('HH:mm') : null,
-        closing_time: values.closing_time ? values.closing_time.format('HH:mm') : null
+        closing_time: values.closing_time ? values.closing_time.format('HH:mm') : null,
+        ordering_hours: orderingHours,
+        default_session_duration: values.default_session_duration || 240
       };
+      
+      // Remove the separate time fields from the payload
+      delete formattedValues.ordering_start_time;
+      delete formattedValues.ordering_end_time;
       
       await updateRestaurantMutation.mutateAsync(formattedValues);
     } catch (error) {
@@ -223,7 +242,7 @@ function RestaurantSettings({ restaurantId, restaurant }) {
                 <Col span={12}>
                   <Form.Item
                     name="opening_time"
-                    label="Opening Time"
+                    label="Restaurant Opening Time"
                   >
                     <TimePicker
                       format="HH:mm"
@@ -235,7 +254,7 @@ function RestaurantSettings({ restaurantId, restaurant }) {
                 <Col span={12}>
                   <Form.Item
                     name="closing_time"
-                    label="Closing Time"
+                    label="Restaurant Closing Time"
                   >
                     <TimePicker
                       format="HH:mm"
@@ -245,6 +264,65 @@ function RestaurantSettings({ restaurantId, restaurant }) {
                   </Form.Item>
                 </Col>
               </Row>
+              
+              <Divider>Ordering Hours</Divider>
+              
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="ordering_start_time"
+                    label="Orders Start Time"
+                    tooltip="Time when customers can start placing orders"
+                  >
+                    <TimePicker
+                      format="HH:mm"
+                      placeholder="09:00"
+                      style={{ width: '100%' }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="ordering_end_time"
+                    label="Orders End Time"
+                    tooltip="Time when customers can no longer place orders"
+                  >
+                    <TimePicker
+                      format="HH:mm"
+                      placeholder="22:00"
+                      style={{ width: '100%' }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={24}>
+                  <Form.Item
+                    name="default_session_duration"
+                    label="Default Table Session Duration (minutes)"
+                    tooltip="How long table sessions remain active by default"
+                    rules={[{ required: true, message: 'Please enter session duration' }]}
+                  >
+                    <InputNumber
+                      min={30}
+                      max={480}
+                      step={15}
+                      style={{ width: '100%' }}
+                      placeholder="240"
+                      addonAfter="minutes"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              <div style={{ 
+                background: '#f6ffed', 
+                border: '1px solid #b7eb8f',
+                borderRadius: '6px',
+                padding: '12px',
+                fontSize: '12px',
+                color: '#389e0d'
+              }}>
+                💡 <strong>Ordering Hours:</strong> Customers can only place orders during these hours, even if tables are activated. This helps manage kitchen capacity and operating costs.
+              </div>
             </Card>
 
             {/* Financial Settings */}

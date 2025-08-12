@@ -43,6 +43,107 @@ export const tableApi = {
     return data;
   },
 
+  // Check if table session is valid for ordering
+  async validateTableSession(restaurantId, tableNumber) {
+    const { data, error } = await supabase
+      .rpc('is_table_session_valid_by_number', {
+        p_restaurant_id: restaurantId,
+        p_table_number: tableNumber
+      });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Get table with session info
+  async getTableWithSession(restaurantId, tableNumber) {
+    const { data, error } = await supabase
+      .from('tables')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('table_number', tableNumber)
+      .eq('is_active', true)
+      .single();
+    
+    if (error) throw error;
+    
+    // Check if session is valid
+    const now = new Date();
+    const sessionValid = data.session_active && 
+      (data.session_expires_at === null || new Date(data.session_expires_at) > now);
+    
+    return { ...data, session_valid: sessionValid };
+  },
+
+  // Activate table session (staff function)
+  async activateSession(tableId, staffName = 'Staff', durationMinutes = null) {
+    const { data, error } = await supabase
+      .rpc('activate_table_session', {
+        table_id: tableId,
+        staff_name: staffName,
+        duration_minutes: durationMinutes
+      });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Deactivate table session (staff function)
+  async deactivateSession(tableId) {
+    const { data, error } = await supabase
+      .rpc('deactivate_table_session', {
+        table_id: tableId
+      });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Extend table session (staff function)
+  async extendSession(tableId, additionalMinutes = 60) {
+    const { data, error } = await supabase
+      .rpc('extend_table_session', {
+        table_id: tableId,
+        additional_minutes: additionalMinutes
+      });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Get active sessions view (staff function)
+  async getActiveSessions(restaurantId) {
+    const { data, error } = await supabase
+      .from('active_table_sessions')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .order('table_number');
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // Bulk activate/deactivate tables
+  async bulkToggleSessions(restaurantId, activate, staffName = 'Staff') {
+    const { data: tables } = await this.getByRestaurant(restaurantId);
+    const results = [];
+    
+    for (const table of tables) {
+      try {
+        if (activate) {
+          await this.activateSession(table.id, staffName);
+        } else {
+          await this.deactivateSession(table.id);
+        }
+        results.push({ table_id: table.id, success: true });
+      } catch (error) {
+        results.push({ table_id: table.id, success: false, error: error.message });
+      }
+    }
+    
+    return results;
+  },
+
   async getByRestaurant(restaurantId) {
     const { data, error } = await supabase
       .from('tables')

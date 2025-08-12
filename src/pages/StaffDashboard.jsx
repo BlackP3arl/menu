@@ -22,7 +22,8 @@ import {
   DollarOutlined,
   EyeOutlined,
   ReloadOutlined,
-  PrinterOutlined
+  PrinterOutlined,
+  TableOutlined
 } from '@ant-design/icons';
 import { useQuery } from 'react-query';
 import { format } from 'date-fns';
@@ -30,6 +31,7 @@ import toast from 'react-hot-toast';
 
 import { orderApi } from '../utils/api';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../types';
+import TableSessionControl from '../components/staff/TableSessionControl';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -243,6 +245,21 @@ Thank you for dining with us!
 
       <Content style={{ padding: '24px', background: '#f5f5f5' }}>
         <Tabs defaultActiveKey="served" size="large">
+          <TabPane 
+            tab={
+              <Space>
+                <TableOutlined />
+                Table Control
+              </Space>
+            } 
+            key="tables"
+          >
+            <TableSessionControl 
+              restaurantId={restaurantId} 
+              staffName="Staff" 
+            />
+          </TabPane>
+
           <TabPane 
             tab={
               <Badge count={servedOrders.length} size="small" offset={[10, 0]}>

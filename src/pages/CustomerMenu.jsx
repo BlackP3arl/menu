@@ -61,10 +61,10 @@ function CustomerMenu() {
     }
   );
 
-  // Fetch table data
+  // Fetch table data with session validation
   const { data: table, isLoading: tableLoading, error: tableError } = useQuery(
     ['table', restaurantId, tableNumber],
-    () => tableApi.getByRestaurantAndNumber(restaurantId, tableNumber),
+    () => tableApi.getTableWithSession(restaurantId, tableNumber),
     {
       enabled: !!restaurantId && !!tableNumber,
       onSuccess: (data) => {
@@ -107,6 +107,49 @@ function CustomerMenu() {
         minHeight: '100vh' 
       }}>
         <Spin size="large" />
+      </div>
+    );
+  }
+
+  // Check if table session is not valid
+  if (table && !table.session_valid) {
+    const now = new Date();
+    const isExpired = table.session_expires_at && new Date(table.session_expires_at) <= now;
+    
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <Alert
+          message={isExpired ? "Table Session Expired" : "Table Not Available"}
+          description={
+            <div>
+              <p>
+                {isExpired 
+                  ? "The ordering session for this table has expired. Please ask staff to reactivate the table."
+                  : "This table is not currently available for orders. Please ask staff to activate the table session."
+                }
+              </p>
+              <p style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
+                Table {tableNumber} • {restaurant?.name || 'Restaurant'}
+              </p>
+              {table.activated_by && (
+                <p style={{ fontSize: '12px', color: '#999' }}>
+                  Last activated by: {table.activated_by}
+                </p>
+              )}
+            </div>
+          }
+          type="warning"
+          showIcon
+          style={{ maxWidth: '500px' }}
+        />
       </div>
     );
   }
