@@ -175,7 +175,8 @@ function TableSessionControl({ restaurantId, staffName = 'Staff' }) {
 
   // Generate menu URL
   const generateMenuUrl = (table) => {
-    const baseUrl = window.location.origin;
+    // Use production URL when deployed, fallback to current origin for development
+    const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     return `${baseUrl}/menu/${restaurantId}/${table.table_number}`;
   };
 
