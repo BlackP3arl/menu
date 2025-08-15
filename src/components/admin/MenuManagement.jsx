@@ -17,7 +17,9 @@ import {
   Tag,
   Row,
   Col,
-  Divider
+  Divider,
+  Radio,
+  Image
 } from 'antd';
 import {
   PlusOutlined,
@@ -26,7 +28,9 @@ import {
   UploadOutlined,
   MenuOutlined,
   AppstoreOutlined,
-  SettingOutlined
+  SettingOutlined,
+  LinkOutlined,
+  CameraOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { menuApi, categoryApi, itemOptionsApi } from '../../utils/api';
@@ -45,6 +49,8 @@ function MenuManagement({ restaurantId }) {
   const [editingOption, setEditingOption] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+  const [imageUploadType, setImageUploadType] = useState('upload'); // 'upload' or 'url'
+  const [imageFileList, setImageFileList] = useState([]);
   
   const [categoryForm] = Form.useForm();
   const [itemForm] = Form.useForm();
@@ -237,6 +243,8 @@ function MenuManagement({ restaurantId }) {
     setEditingItem(null);
     itemForm.resetFields();
     itemForm.setFieldsValue({ category_id: selectedCategory });
+    setImageUploadType('upload');
+    setImageFileList([]);
     setItemModalVisible(true);
   };
 
@@ -251,8 +259,19 @@ function MenuManagement({ restaurantId }) {
       is_active: item.is_active, // Use is_active field directly
       prep_time: item.prep_time,
       allergens: item.allergens,
-      dietary_info: item.dietary_info
+      dietary_info: item.dietary_info,
+      image_url: item.image_url
     });
+    
+    // Set image upload type and file list based on existing image
+    if (item.image_url) {
+      setImageUploadType('url');
+      setImageFileList([]);
+    } else {
+      setImageUploadType('upload');
+      setImageFileList([]);
+    }
+    
     setItemModalVisible(true);
   };
 
@@ -271,6 +290,55 @@ function MenuManagement({ restaurantId }) {
     }
   };
 
+  const handleImageUpload = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const beforeUpload = (file) => {
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      message.error('You can only upload image files!');
+      return false;
+    }
+    
+    const isLt5M = file.size / 1024 / 1024 < 5;
+    if (!isLt5M) {
+      message.error('Image must be smaller than 5MB!');
+      return false;
+    }
+    
+    return false; // Prevent auto upload, we'll handle it manually
+  };
+
+  const handleFileChange = async ({ fileList: newFileList }) => {
+    console.log('File change:', newFileList);
+    setImageFileList(newFileList);
+    
+    // If a file is added, convert it to base64 for preview and storage
+    if (newFileList.length > 0 && newFileList[0].originFileObj) {
+      const file = newFileList[0].originFileObj;
+      console.log('Processing file:', file.name, 'Size:', file.size);
+      try {
+        const base64 = await handleImageUpload(file);
+        console.log('Generated base64 length:', base64.length);
+        console.log('Base64 preview:', base64.substring(0, 100));
+        itemForm.setFieldsValue({ image_url: base64 });
+        console.log('Form field set, current value:', itemForm.getFieldValue('image_url')?.substring(0, 50));
+      } catch (error) {
+        console.error('Image processing error:', error);
+        message.error('Failed to process image');
+      }
+    } else {
+      // If file is removed, clear the form field
+      console.log('File removed, clearing form field');
+      itemForm.setFieldsValue({ image_url: null });
+    }
+  };
+
   const handleItemSubmit = async (values) => {
     try {
       console.log('Form values submitted:', values);
@@ -282,16 +350,35 @@ function MenuManagement({ restaurantId }) {
         return;
       }
       
+      // Handle image based on upload type
+      let imageUrl = null;
+      if (imageUploadType === 'url' && values.image_url) {
+        imageUrl = values.image_url;
+        console.log('Using URL image:', imageUrl);
+      } else if (imageUploadType === 'upload') {
+        // For uploaded files, use the base64 data from the form field
+        imageUrl = values.image_url;
+        console.log('Using uploaded image (base64):', imageUrl ? `${imageUrl.substring(0, 50)}...` : 'null');
+      }
+      
+      console.log('Image upload type:', imageUploadType);
+      console.log('File list length:', imageFileList.length);
+      console.log('Form image_url value:', values.image_url ? `${values.image_url.substring(0, 50)}...` : 'null');
+      
       // Map form values to database fields
       const mappedValues = {
         ...values,
-        base_price: values.price // Map price to base_price
+        base_price: values.price, // Map price to base_price
+        image_url: imageUrl
       };
       
       // Remove the form fields that don't exist in database
       delete mappedValues.price;
       
-      console.log('Mapped values for database:', mappedValues);
+      console.log('Final mapped values for database:', {
+        ...mappedValues,
+        image_url: mappedValues.image_url ? `${mappedValues.image_url.substring(0, 50)}...` : 'null'
+      });
       
       if (editingItem) {
         console.log('Updating item with ID:', editingItem.id);
@@ -433,6 +520,34 @@ function MenuManagement({ restaurantId }) {
 
   // Table columns for menu items
   const itemColumns = [
+    {
+      title: 'Image',
+      dataIndex: 'image_url',
+      key: 'image_url',
+      width: 80,
+      render: (imageUrl) => (
+        imageUrl ? (
+          <Image
+            width={60}
+            height={60}
+            src={imageUrl}
+            style={{ objectFit: 'cover', borderRadius: 4 }}
+            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN" />
+        ) : (
+          <div style={{ 
+            width: 60, 
+            height: 60, 
+            backgroundColor: '#f5f5f5', 
+            borderRadius: 4, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+          }}>
+            <CameraOutlined style={{ color: '#d9d9d9', fontSize: 20 }} />
+          </div>
+        )
+      )
+    },
     {
       title: 'Name',
       dataIndex: 'name',
@@ -868,6 +983,8 @@ function MenuManagement({ restaurantId }) {
           setItemModalVisible(false);
           setEditingItem(null);
           itemForm.resetFields();
+          setImageUploadType('upload');
+          setImageFileList([]);
         }}
         footer={null}
         width={800}
@@ -960,6 +1077,103 @@ function MenuManagement({ restaurantId }) {
             </Col>
           </Row>
 
+          {/* Image Upload Section */}
+          <Divider>Menu Item Image</Divider>
+          
+          <Form.Item label="Image Upload Method">
+            <Radio.Group
+              value={imageUploadType}
+              onChange={(e) => {
+                setImageUploadType(e.target.value);
+                setImageFileList([]);
+                // Don't clear image_url when switching to upload mode - let user keep existing data
+                // Only clear when switching to URL mode if there's no existing URL
+                if (e.target.value === 'url' && !itemForm.getFieldValue('image_url')?.startsWith('http')) {
+                  itemForm.setFieldsValue({ image_url: '' });
+                }
+              }}
+            >
+              <Radio value="upload">
+                <UploadOutlined /> Upload from Device
+              </Radio>
+              <Radio value="url">
+                <LinkOutlined /> Image URL
+              </Radio>
+            </Radio.Group>
+          </Form.Item>
+
+          {imageUploadType === 'upload' ? (
+            <>
+              {/* Hidden form field to store uploaded image data */}
+              <Form.Item name="image_url" style={{ display: 'none' }}>
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Upload Image"
+                help="Upload an image for the menu item (max 5MB, JPG/PNG/GIF)"
+              >
+                <Upload
+                  listType="picture-card"
+                  fileList={imageFileList}
+                  beforeUpload={beforeUpload}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  maxCount={1}
+                >
+                  {imageFileList.length === 0 && (
+                    <div>
+                      <PlusOutlined />
+                      <div style={{ marginTop: 8 }}>Upload Image</div>
+                    </div>
+                  )}
+                </Upload>
+              </Form.Item>
+            </>
+          ) : (
+            <Form.Item
+              name="image_url"
+              label="Image URL"
+              help="Enter a URL for the menu item image"
+              rules={[
+                {
+                  type: 'url',
+                  message: 'Please enter a valid URL'
+                }
+              ]}
+            >
+              <Input
+                placeholder="https://example.com/image.jpg"
+                prefix={<LinkOutlined />}
+              />
+            </Form.Item>
+          )}
+
+          {/* Preview of current image */}
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.image_url !== currentValues.image_url
+            }
+          >
+            {({ getFieldValue }) => {
+              const imageUrl = getFieldValue('image_url');
+              return imageUrl ? (
+                <div style={{ marginBottom: 16 }}>
+                  <Text strong>Preview:</Text>
+                  <div style={{ marginTop: 8 }}>
+                    <Image
+                      width={120}
+                      height={120}
+                      src={imageUrl}
+                      style={{ objectFit: 'cover', borderRadius: 8 }}
+                      fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+                    />
+                  </div>
+                </div>
+              ) : null;
+            }}
+          </Form.Item>
+
           <Form.Item
             name="is_active"
             label="Status"
@@ -973,7 +1187,13 @@ function MenuManagement({ restaurantId }) {
 
           <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
             <Space>
-              <Button onClick={() => setItemModalVisible(false)}>
+              <Button onClick={() => {
+                setItemModalVisible(false);
+                setEditingItem(null);
+                itemForm.resetFields();
+                setImageUploadType('upload');
+                setImageFileList([]);
+              }}>
                 Cancel
               </Button>
               <Button
